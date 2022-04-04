@@ -8,18 +8,19 @@ const bcrypt = require('bcrypt');
 
 let secret = process.env.JWT
 
-async function requireToken (req, res, next) {
-  try {const token = req.headers.authorization
-  const userObj = await User.byToken(token)
-  req.user = userObj;
-  next();
+const requireToken = async (req, res, next) => {
+  try {
+    const token = jwt.verify(req.headers.authorization, secret)
+    const user = await User.byToken(token);
+    req.user = user;
+    console.log(req.user)
+    next();
+  } catch(error) {
+    next(error);
   }
-  catch(err) {
-    next(err)
-  }
-}
-app.get('/', (req, res)=> res.sendFile(path.join(__dirname, 'index.html')));
+};
 
+app.get('/', (req, res)=> res.sendFile(path.join(__dirname, 'index.html')));
 
 app.post('/api/auth', async(req, res, next)=> {
   try {
@@ -32,19 +33,19 @@ app.post('/api/auth', async(req, res, next)=> {
   }
 });
 
-app.get('/api/auth', async(req, res, next)=> {
+app.get('/api/auth', requireToken, async(req, res, next)=> {
   try {
-    res.send(await User.byToken(req.user));
+    res.send(req.user);
   }
   catch(ex){
     next(ex);
   }
 });
 
-app.get('/api/users/:id/notes', async (req,res,next) => {
+app.get('/api/users/:id/notes', requireToken, async (req,res,next) => {
   try{
     let notes = await Note.findAll({
-      where: {userId: req.user}
+      where: {userId: req.params.id}
     })
     res.send(notes)
   }
